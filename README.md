@@ -1,7 +1,7 @@
-#RuneFrame
+# RuneFrame
 RuneFrame is a minimalist client for Old School RuneScape written in Java. 
 
-##Features
+## Features
 RuneFrame forgoes having an extensive number of features to focus on doing one thing well: loading the game.
 
 **Speed** - RuneFrame is optimized to load as quickly as possible, decompressing and verifying the JAR as it is loaded into memory. Once a gamepack has been downloaded, it can be cached locally for nearly instant load times.
@@ -16,19 +16,19 @@ RuneFrame forgoes having an extensive number of features to focus on doing one t
 - Confirmation prompt when closing client
 - Easy to configure homeworld and hardware acceleration
 
-##Releases
+## Releases
 Currently, only an executable JAR is available for download, although you are free to wrap it as an .exe file on your own if you wish. It should be compatible with most operating systems, although it has only been significantly tested in Windows thus far.
 
 The legality of the client has not been stated nor confirmed by Jagex, so use at your own risk.
 
-##Arguments
+## Arguments
 Three different command line arguments can be provided to the client during startup, which change some settings which cannot be offered in the preferences file. All arguments begin with "--", and contain no spaces between each key-value pair. For example, "PORTABLE=false PATH=C:/" will put the client into non-portable mode with all the files stored directly within the C: drive.
 
 `PORTABLE` changes the default location of all directories used by RuneFrame. See the Directories section below for details.
 `PATH` changes the location of the user directory. By default, this path will be determined based on whether the client is in portable mode.
 `DEBUG` determines where errors are printed. Default is false, but if set to true, errors will be printed to the console instead of to error.log.
 
-##Directories
+## Directories
 These are the default locations of all directories used by the client. The user directory can only be changed by providing a different directory to the client as a command-line argument. The other directories are all defined in the preferences file, which is described in the Preferences section below.
 
 **User Directory** - Contains runeframe.pref, runeframe.state, and error.log
@@ -40,16 +40,17 @@ These are the default locations of all directories used by the client. The user 
 - Data Directory = ./data/
 - Screenshot Directory = ./screenshots/
 
-**Non-Portable Mode::**
+**Non-Portable Mode:**
 - User Directory = $APPDATA/RuneFrame/ (/home/.config/RuneFrame/ on Linux)
 - Data Directory = $PROGRAMDATA/.jagex/oldschool (/home/.jagex/oldschool on Linux)
 - Screenshot Directory = $HOME/Pictures/RuneFrame
 
-##Preferences
+## Preferences
 Preferences are stored in "runeframe.pref", which is located in the user directory. Documentation for each setting is included in the preferences file itself when it is automatically created. For reference, the default contents of the two different preferences files are given below.
 
-###Portable
-```# Sets which world the client will attempt use on startup.
+### Portable
+```
+# Sets which world the client will attempt use on startup.
 home-world=0
 
 # If true, the client will store the gamepack locally for faster startup.
@@ -93,10 +94,12 @@ data-directory=./data
 
 # Specifies the directory in which the game's cache and gamepack will be stored.
 # This folder will not be created unless the screenshot feature is enabled.
-screenshot-directory=./screenshots```
+screenshot-directory=./screenshots
+```
 
-###Non-Portable
-```# Sets which world the client will attempt use on startup.
+### Non-Portable
+```
+# Sets which world the client will attempt use on startup.
 home-world=0
 
 # If true, the client will store the gamepack locally for faster startup.
@@ -140,4 +143,5 @@ data-directory=$PROGRAMDATA/.jagex/oldschool
 
 # Specifies the directory in which the game's cache and gamepack will be stored.
 # This folder will not be created unless the screenshot feature is enabled.
-screenshot-directory=$HOME/Pictures/RuneFrame```
+screenshot-directory=$HOME/Pictures/RuneFrame
+```
