@@ -27,14 +27,18 @@ The legality of the client has not been stated nor confirmed by Jagex, so use at
 Three different command line arguments can be provided to the client during startup, which change some settings which cannot be offered in the preferences file. All arguments begin with "--", and contain no spaces between each key-value pair. For example, "PORTABLE=false PATH=C:/" will put the client into non-portable mode with all the files stored directly within the C: drive.
 
 `PORTABLE` changes the default location of all directories used by RuneFrame. See the Directories section below for details.
+
 `PATH` changes the location of the user directory. By default, this path will be determined based on whether the client is in portable mode.
+
 `DEBUG` determines where errors are printed. Default is false, but if set to true, errors will be printed to the console instead of to error.log.
 
 ## Directories
 These are the default locations of all directories used by the client. The user directory can only be changed by providing a different directory to the client as a command-line argument. The other directories are all defined in the preferences file, which is described in the Preferences section below.
 
 **User Directory** - Contains runeframe.pref, runeframe.state, and error.log
+
 **Data Directory** - Contains the cached gamepack, as well as the game's own data files
+
 **Screenshot Directory** - Contains all screenshots taken using the client
 
 **Portable Mode:**
