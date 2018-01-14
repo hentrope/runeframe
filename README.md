@@ -41,12 +41,12 @@ These are the default locations of all directories used by the client. The user 
 
 **Screenshot Directory** - Contains all screenshots taken using the client
 
-**Portable Mode:**
+### Portable Mode
 - User Directory = ./ (current working directory)
 - Data Directory = ./data/
 - Screenshot Directory = ./screenshots/
 
-**Non-Portable Mode:**
+### Non-Portable Mode
 - User Directory = $APPDATA/RuneFrame/ (/home/.config/RuneFrame/ on Linux)
 - Data Directory = $PROGRAMDATA/.jagex/oldschool (/home/.jagex/oldschool on Linux)
 - Screenshot Directory = $HOME/Pictures/RuneFrame
