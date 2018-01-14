@@ -19,6 +19,8 @@ RuneFrame forgoes having an extensive number of features to focus on doing one t
 ## Releases
 Currently, only an executable JAR is available for download, although you are free to wrap it as an .exe file on your own if you wish. It should be compatible with most operating systems, although it has only been significantly tested in Windows thus far.
 
+[Link To Latest Release](https://github.com/hentrope/runeframe/releases)
+
 The legality of the client has not been stated nor confirmed by Jagex, so use at your own risk.
 
 ## Arguments
