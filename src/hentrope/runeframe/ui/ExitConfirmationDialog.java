@@ -2,18 +2,21 @@ package hentrope.runeframe.ui;
 
 import java.awt.Dialog;
 import java.awt.Frame;
-import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.awt.event.WindowFocusListener;
 import java.awt.event.WindowStateListener;
 
 import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JDialog;
-import javax.swing.JFrame;
 import javax.swing.JOptionPane;
+
+import hentrope.runeframe.util.OperatingSystem;
 
 public class ExitConfirmationDialog {
 	public static final String MESSAGE = "Are you sure you want to quit?",
@@ -25,7 +28,7 @@ public class ExitConfirmationDialog {
 
 	public synchronized static void showExitConfirmationDialog(Frame parentComponent) {
 		if (dialog == null) {
-			dialog = new JDialog(parentComponent, TITLE, false);
+			dialog = new JDialog(parentComponent, TITLE, true);
 			dialog.setResizable(false);
 			dialog.addWindowListener(new WindowAdapter() {
 				@Override
@@ -35,18 +38,22 @@ public class ExitConfirmationDialog {
 
 				@Override
 				public void windowIconified(WindowEvent we) {
-					System.out.println("Iconified!");
 					closeDialog();
 				}
 			});
-			parentComponent.addWindowStateListener(new WindowStateListener() {
-				@Override
-				public void windowStateChanged(WindowEvent we) {
-					System.out.println("State change!");
-					if ((we.getNewState() & JFrame.ICONIFIED) != 0)
-						closeDialog();
-				}
-			});
+
+			if (OperatingSystem.getCurrent() == OperatingSystem.LINUX
+					&& "kde".equalsIgnoreCase(System.getenv("XDG_CURRENT_DESKTOP")))
+				dialog.addWindowFocusListener(new WindowFocusListener() {
+					@Override
+					public void windowLostFocus(WindowEvent we) {
+						if (we.getOppositeWindow() == null)
+							closeDialog();
+					}
+	
+					@Override
+					public void windowGainedFocus(WindowEvent e) {}
+				});
 
 			JButton exit = new JButton("Exit");
 			exit.addActionListener(new ActionListener() {
@@ -80,9 +87,51 @@ public class ExitConfirmationDialog {
 			pane.selectInitialValue();
 
 		}
+		
+		dialog.addMouseListener(new MouseListener() {
+
+			@Override
+			public void mouseClicked(MouseEvent arg0) {
+				fixie();
+			}
+
+			@Override
+			public void mouseEntered(MouseEvent arg0) {
+				fixie();
+			}
+
+			@Override
+			public void mouseExited(MouseEvent arg0) {
+				fixie();
+			}
+
+			@Override
+			public void mousePressed(MouseEvent arg0) {
+				fixie();
+			}
+
+			@Override
+			public void mouseReleased(MouseEvent arg0) {
+				fixie();
+			}
+		});
 
 		dialog.setLocationRelativeTo(parentComponent);
-		dialog.setVisible(true);
+		(new Thread(new Runnable() {
+
+			@Override
+			public void run() {
+				dialog.setVisible(true);
+			}
+			
+		})).start();
+	}
+	
+	private static void fixie() {
+		dialog.invalidate();
+		dialog.revalidate();
+		dialog.repaint();
+		System.out.println(dialog.getIgnoreRepaint());
 	}
 
 	private synchronized static void closeDialog() {
@@ -90,16 +139,4 @@ public class ExitConfirmationDialog {
 		dialog.dispose();
 		dialog = null;
 	}
-
-	//UIManager.getIcon("OptionPane.warningIcon");
-	/*Object[] opt = {"Exit","Cancel"};
-	if (JOptionPane.showOptionDialog(frame,
-			"Are you sure you want to quit?",
-			"Exit Confirmation",
-			JOptionPane.OK_CANCEL_OPTION,
-			JOptionPane.WARNING_MESSAGE,
-			(Icon)null,
-			opt,
-			opt[1]) == JOptionPane.YES_OPTION)
-		System.exit(0);*/
 }
