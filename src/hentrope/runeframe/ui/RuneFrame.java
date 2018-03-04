@@ -6,7 +6,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
-import javax.swing.Icon;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 
@@ -232,15 +231,10 @@ public class RuneFrame implements ComponentListener, WindowStateListener {
 	 * confirm, the application will exit.
 	 */
 	public void close() {
-		Object[] opt = {"Exit","Cancel"};
-		if (JOptionPane.showOptionDialog(frame,
+		if (ExitConfirmDialog.showConfirmDialog(frame,
 				"Are you sure you want to quit?",
 				"Exit Confirmation",
-				JOptionPane.OK_CANCEL_OPTION,
-				JOptionPane.WARNING_MESSAGE,
-				(Icon)null,
-				opt,
-				opt[1]) == JOptionPane.YES_OPTION)
+				null) == JOptionPane.YES_OPTION)
 			System.exit(0);
 	}
 
