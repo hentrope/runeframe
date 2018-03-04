@@ -35,7 +35,7 @@ public class Runner {
 	 * @throws Exception if there is an unhandled exception during execution
 	 */
 	public static void main(String[] arguments) throws Exception {
-		//long start = System.nanoTime(); // Debug - output starting time
+		long start = System.nanoTime(); // Debug - output starting time
 
 		/*
 		 * Store all of the command line arguments in an Arguments instance.
@@ -55,11 +55,6 @@ public class Runner {
 		atlas.dataDir.mkdirs();
 		atlas.certificateDir.mkdir();
 
-		/*
-		 * Set the user.home property so that the game places its files in a
-		 * a different directory.
-		 */
-		System.setProperty("user.home", atlas.dataDir.toString());
 
 		/*System.out.println("user = " + atlas.userDir); // Debug - print all directory paths
 		System.out.println("system = " + atlas.systemDir);
@@ -100,44 +95,47 @@ public class Runner {
 
 		/*
 		 * Attempt to load the game client 3 times, terminating the process if
-		 * there are more than 3 exceptions thrown.
+		 * there are more than 3 non-IO exceptions thrown.
 		 */
 		int counter = 3;
 		Client game = null;
+		Applet applet = null;
 		while (game == null) {
 			try {
 				game = Client.loadAll(pref, atlas, progressBar);
+				applet = game.applet;
 			} catch (IOException e) {
 				retry(progressBar, "Connection error.", 15);
-			} catch (SecurityException | GeneralSecurityException e) {
+			} catch (Exception e) {
 				counter--;
-				if (counter <= 0) {
-
-					throw e;
-				} else
-					retry(progressBar, "Invalid gamepack.", 10);
-			} catch (ReflectiveOperationException e) {
-				counter--;
-				if (counter <= 0) {
-
-					throw e;
-				} else
-					retry(progressBar, "Classload error.", 10);
+				if (counter > 0) {
+					if (e instanceof SecurityException || e instanceof GeneralSecurityException)
+						retry(progressBar, "Invalid gamepack.", 10);
+					else if (e instanceof ReflectiveOperationException)
+						retry(progressBar, "Classload error.", 10);
+					else throw e;
+				} else throw e;
 			}
 		}
 
 		/*
 		 * Add the applet to the frame on the AWT event dispatch thread.
 		 */
-		Applet applet = game.applet;
+		final Applet finalApplet = applet;
 		SwingUtilities.invokeAndWait(new Runnable() {
 			@Override
 			public void run() {
-				ui.setComponent(applet);
-				applet.revalidate();
+				ui.setComponent(finalApplet);
+				finalApplet.revalidate();
 			}
 		});
 		
+		/*
+		 * Set the user.home property so that the game places its files in a
+		 * a different directory.
+		 */
+		System.setProperty("user.home", atlas.dataDir.toString());
+
 		/*
 		 * Only after the applet is added to the frame may it be initialized and started.
 		 */
@@ -145,7 +143,7 @@ public class Runner {
 		applet.start();
 
 
-		//System.out.println((System.nanoTime() - start) / 1000000); // Debug - output loading time
+		System.out.println((System.nanoTime() - start) / 1000000); // Debug - output loading time
 
 
 		/*
@@ -166,7 +164,12 @@ public class Runner {
 		if (!atlas.preferences.exists())
 			try {
 				pref.saveDefault(atlas.preferences);
-			} catch (IOException e) {}
+			} catch (IOException e) {
+				// Ignore IOExceptions
+			} catch (Exception e) {
+				System.err.println("Unable to save default preferences to disk.");
+				e.printStackTrace();
+			}
 
 		/*
 		 * If the gamepack was downloaded remotely but the preference is set to
@@ -178,7 +181,7 @@ public class Runner {
 				byte[] data = game.intercept.toByteArray();
 				out.write(data, 0, data.length);
 				idFile.writeInt(Integer.parseInt(game.config.get(ClientConfig.Key.DOWNLOAD)));
-			} catch (IOException | NumberFormatException e) {
+			} catch (Exception e) {
 				System.err.println("Unable to save gamepack cache to disk.");
 				e.printStackTrace();
 			}

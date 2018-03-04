@@ -65,17 +65,52 @@ public class Client {
 			throws IOException, GeneralSecurityException, ReflectiveOperationException, SecurityException {
 		
 		listener.setProgress(0, "Loading config");
-
-		/*
-		 * Load the client config from either the preferred world if available,
-		 * or the default world if that world is invalid/fails.
-		 */
+		
 		ClientConfig config;
-		try {
-			config = ClientConfig.fromWorld(pref.getInt(HOME_WORLD));
-		} catch (IOException | NumberFormatException e) {
-			config = ClientConfig.fromDefaultWorld();
-		}
+		int cacheID = -1;
+		
+		/*
+		 * Create a thread that loads the 
+		 */
+		Thread cacheIDThread = new Thread(new Runnable() {
+			@Override
+			public void run() {
+				try ( RandomAccessFile idFile = new RandomAccessFile(atlas.cacheID, "rwd") ) {
+					cacheID = idFile.readInt();
+				} catch (GeneralSecurityException | IOException | SecurityException e) {
+					cacheID = 0;
+				}
+			}
+		});
+		
+		/*
+		 * Create a thread
+		 */
+		Thread configThread = new Thread(new Runnable() {
+			@Override
+			public void run() {
+				/*
+				 * Load the client config from either the preferred world if available,
+				 * or the default world if that world is invalid/fails.
+				 */
+				
+				try {
+					config = ClientConfig.fromWorld(pref.getInt(HOME_WORLD));
+				} catch (IOException | NumberFormatException e) {
+					config = ClientConfig.fromDefaultWorld();
+				}
+				
+				/*
+				 * Wait for the cacheID thread to return a result.
+				 */
+				while (cacheID == -1) try {
+					cacheIDThread.join();
+				} catch (InterruptedException e) {}
+			}
+		});
+
+		
+		
 
 		listener.setProgress(0, "Loading application");
 
