@@ -1,21 +1,17 @@
 package hentrope.runeframe;
 
-import static hentrope.runeframe.Arguments.Key.*;
 import static hentrope.runeframe.Preferences.Key.*;
 
 import java.applet.Applet;
 import java.io.*;
 import java.security.GeneralSecurityException;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
-import javax.swing.SwingUtilities;
-import javax.swing.UIManager;
-
-import hentrope.runeframe.client.Client;
-import hentrope.runeframe.client.ClientConfig;
 import hentrope.runeframe.io.FileAtlas;
-import hentrope.runeframe.screen.Screenshot;
-import hentrope.runeframe.ui.GraphicsAcceleration;
-import hentrope.runeframe.ui.InputManager;
+import hentrope.runeframe.task.*;
 import hentrope.runeframe.ui.ProgressBar;
 import hentrope.runeframe.ui.RuneFrame;
 import hentrope.runeframe.util.ProgressListener;
@@ -26,7 +22,7 @@ import hentrope.runeframe.util.ProgressListener;
  * @author hentrope
  */
 public class Runner {
-	public final static int TASK_DELAY = 1000;
+	public final static int CLEANUP_DELAY = 1000;
 
 	/**
 	 * Entry method for the RuneFrame client. See inline comments for details.
@@ -36,74 +32,99 @@ public class Runner {
 	 */
 	public static void main(String[] arguments) throws Exception {
 		long start = System.nanoTime(); // Debug - output starting time
-
-		/*
-		 * Store all of the command line arguments in an Arguments instance.
-		 */
-		Arguments args = new Arguments(arguments);
 		
 		/*
-		 * Based on the Arguments, load in all preferences from the preferences file.
+		 * Create a new cached thread pool to handle multi-threading the tasks
+		 * performed to load the client.
 		 */
-		Preferences pref = new Preferences(args);
+		ExecutorService exec = Executors.newCachedThreadPool();
+
+		/*
+		 * Submit a task that will create Arguments, Preferences, and FileAtlas
+		 * instances based on the arguments submitted to the main method.
+		 */
+		Future<LoadClientConfig.Results> loadClientConfig = exec.submit(
+				new LoadClientConfig(arguments) );
 		
 		/*
-		 * Based on both arguments and preferences, determine the location of all files.
+		 * Create a ProgressBar instance so that other tasks can update the
+		 * progress bar without waiting for the GUI to be initialized.
 		 */
-		FileAtlas atlas = new FileAtlas(args, pref);
-		atlas.userDir.mkdirs();
-		atlas.dataDir.mkdirs();
-		atlas.certificateDir.mkdir();
-
-
-		/*System.out.println("user = " + atlas.userDir); // Debug - print all directory paths
-		System.out.println("system = " + atlas.systemDir);
-		System.out.println("screen = " + atlas.screenDir);*/
-
-		/*
-		 * Unless the DEBUG flag is set, output any errors to an external file.
-		 */
-		if (!args.getBool(DEBUG))
-			try {
-				System.setErr(new PrintStream(new FileOutputStream(atlas.errors, true)));
-			} catch (FileNotFoundException e) {
-				System.err.println("Unable to open error output file.");
-			}
-
-		/*
-		 * Create the UI components, initializing them on the AWT event dispatch thread.
-		 */
-		RuneFrame ui = new RuneFrame();
 		ProgressBar progressBar = new ProgressBar();
-		SwingUtilities.invokeLater(new Runnable() {
-			@Override
-			public void run() {
-				System.setProperty("swing.defaultlaf", UIManager.getSystemLookAndFeelClassName());
-				System.setProperty("sun.awt.noerasebackground", "true");
-				System.setProperty("sun.awt.erasebackgroundonresize", "false");
-				GraphicsAcceleration.set(pref.get(GRAPHICS_ACCELERATION));
-				
-				ui.init(pref, atlas.state);
-				ui.setComponent(progressBar);
-				ui.show();
-				progressBar.setEnabled(true);
+		
+		/*
+		 * Submit a task that will initialize and display the client frame,
+		 * adding and displaying the previously created ProgressBar.
+		 */
+		Future<RuneFrame> createUIComponents = exec.submit(
+				new CreateUIComponents(loadClientConfig, progressBar) );
 
-				InputManager.setupKeyEventDispatcher( pref.getBool(FULLSCREEN_ENABLED) ? ui : null,
-						pref.getBool(SCREENSHOT_ENABLED) ? Screenshot.create(pref, atlas.screenDir, ui) : null);
-			}
-		});
+		/*
+		 * Since all remaining tasks will immediately depend on
+		 * loadClientConfig completing, wait for it to complete and store the
+		 * results in local variables for easier access.
+		 */
+		LoadClientConfig.Results clientConfigResults = loadClientConfig.get();
+		Preferences pref = clientConfigResults.pref;
+		FileAtlas atlas = clientConfigResults.atlas;
+		
+		
+		
+		/*
+		 * If the client is set to cache the gamepack, submit tasks that will
+		 * load both the gamepack and the cacheID from the disk.
+		 */
+		Future<LoadGamepack.Results> loadCacheGamepack = null;
+		Future<Integer> loadCacheID = null;
+		if (pref.getBool(CACHE_GAMEPACK)) {
+			loadCacheGamepack = exec.submit(new LoadCacheGamepack(atlas.cacheJar));
+			loadCacheID = exec.submit(new LoadCacheID(atlas.cacheID));
+		}
+		
+		
 
 		/*
 		 * Attempt to load the game client 3 times, terminating the process if
 		 * there are more than 3 non-IO exceptions thrown.
 		 */
 		int counter = 3;
-		Client game = null;
+		
+		int downloadID = -1;
+		boolean triedCache = false;
+		LoadGamepack.Results gamepack = null;
 		Applet applet = null;
-		while (game == null) {
+		while (applet == null) {
 			try {
-				game = Client.loadAll(pref, atlas, progressBar);
-				applet = game.applet;
+				gamepack = null;
+				
+				progressBar.setProgress(0, "Loading config");
+				JavConfig jav = new LoadJavConfig(pref.getInt(HOME_WORLD)).call();
+				downloadID = Integer.parseInt(jav.get(JavConfig.Key.DOWNLOAD));
+				
+				
+				
+				progressBar.setProgress(0, "Loading application");
+				if (!triedCache && pref.getBool(CACHE_GAMEPACK)) try {
+					triedCache = true;
+					int cacheID = loadCacheID.get();
+					
+					if (cacheID == downloadID)
+						gamepack = loadCacheGamepack.get();
+				} catch (Exception e) {
+					System.err.println("Unable to load local cache.");
+					e.printStackTrace();
+				}
+				
+				
+				
+				if (gamepack == null)
+					gamepack = new LoadWebGamepack(jav, pref.getBool(CACHE_GAMEPACK), progressBar, atlas.certificateDir).call();
+				
+				progressBar.setProgress(100, "Launching application");
+				applet = new CreateApplet(jav, gamepack.classMap).call();
+				
+				System.out.println((System.nanoTime() - start) / 1000000);
+				
 			} catch (IOException e) {
 				retry(progressBar, "Connection error.", 15);
 			} catch (Exception e) {
@@ -117,33 +138,20 @@ public class Runner {
 				} else throw e;
 			}
 		}
-
-		/*
-		 * Add the applet to the frame on the AWT event dispatch thread.
-		 */
-		final Applet finalApplet = applet;
-		SwingUtilities.invokeAndWait(new Runnable() {
-			@Override
-			public void run() {
-				ui.setComponent(finalApplet);
-				finalApplet.revalidate();
-			}
-		});
+		
+		
 		
 		/*
 		 * Set the user.home property so that the game places its files in a
 		 * a different directory.
 		 */
 		System.setProperty("user.home", atlas.dataDir.toString());
-
-		/*
-		 * Only after the applet is added to the frame may it be initialized and started.
-		 */
-		applet.init();
-		applet.start();
+		
+		
+		new StartApplet(applet, createUIComponents.get()).call();
 
 
-		System.out.println((System.nanoTime() - start) / 1000000); // Debug - output loading time
+		//System.out.println((System.nanoTime() - start) / 1000000); // Debug - output loading time
 
 
 		/*
@@ -155,37 +163,34 @@ public class Runner {
 		 */
 		Thread.currentThread().setPriority(Thread.NORM_PRIORITY - 1);
 		try {
-			Thread.sleep(TASK_DELAY);
+			Thread.sleep(CLEANUP_DELAY);
 		} catch (InterruptedException e) {}
 
 		/*
 		 * If a preferences file does not exist, create it with the default values.
 		 */
-		if (!atlas.preferences.exists())
-			try {
-				pref.saveDefault(atlas.preferences);
-			} catch (IOException e) {
-				// Ignore IOExceptions
-			} catch (Exception e) {
-				System.err.println("Unable to save default preferences to disk.");
-				e.printStackTrace();
-			}
+		try {
+			new SaveDefaultPreferences(pref, atlas).call();
+		} catch (IOException e) {
+			// Ignore IOExceptions
+		} catch (Exception e) {
+			System.err.println("Unable to save default preferences to disk.");
+			e.printStackTrace();
+		}
 
 		/*
 		 * If the gamepack was downloaded remotely but the preference is set to
-		 * cache it, save the gamepack to disk using the intercept stream.
+		 * cache it, save the gamepack to disk using bytes from the intercept
+		 * stream.
 		 */
-		if (game.intercept != null) {
-			try (	OutputStream out = new FileOutputStream(atlas.cacheJar);
-					RandomAccessFile idFile = new RandomAccessFile(atlas.cacheID, "rwd") ) {
-				byte[] data = game.intercept.toByteArray();
-				out.write(data, 0, data.length);
-				idFile.writeInt(Integer.parseInt(game.config.get(ClientConfig.Key.DOWNLOAD)));
-			} catch (Exception e) {
-				System.err.println("Unable to save gamepack cache to disk.");
-				e.printStackTrace();
-			}
+		if (gamepack.raw != null) try {
+			new SaveGamepackCache(atlas.cacheID, atlas.cacheJar, gamepack.raw, downloadID).call();
+		} catch (Exception e) {
+			System.err.println("Unable to save gamepack cache to disk.");
+			e.printStackTrace();
 		}
+
+		exec.shutdown();
 	}
 
 	/**

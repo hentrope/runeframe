@@ -65,52 +65,10 @@ public class Client {
 			throws IOException, GeneralSecurityException, ReflectiveOperationException, SecurityException {
 		
 		listener.setProgress(0, "Loading config");
-		
-		ClientConfig config;
-		int cacheID = -1;
-		
-		/*
-		 * Create a thread that loads the 
-		 */
-		Thread cacheIDThread = new Thread(new Runnable() {
-			@Override
-			public void run() {
-				try ( RandomAccessFile idFile = new RandomAccessFile(atlas.cacheID, "rwd") ) {
-					cacheID = idFile.readInt();
-				} catch (GeneralSecurityException | IOException | SecurityException e) {
-					cacheID = 0;
-				}
-			}
-		});
-		
+
 		/*
 		 * Create a thread
 		 */
-		Thread configThread = new Thread(new Runnable() {
-			@Override
-			public void run() {
-				/*
-				 * Load the client config from either the preferred world if available,
-				 * or the default world if that world is invalid/fails.
-				 */
-				
-				try {
-					config = ClientConfig.fromWorld(pref.getInt(HOME_WORLD));
-				} catch (IOException | NumberFormatException e) {
-					config = ClientConfig.fromDefaultWorld();
-				}
-				
-				/*
-				 * Wait for the cacheID thread to return a result.
-				 */
-				while (cacheID == -1) try {
-					cacheIDThread.join();
-				} catch (InterruptedException e) {}
-			}
-		});
-
-		
-		
 
 		listener.setProgress(0, "Loading application");
 
@@ -122,22 +80,6 @@ public class Client {
 		 * Since this code will have already been verified when it was
 		 * downloaded, there's no need to verify it again.
 		 */
-		ClientGamepack gamepack = null;
-		InterceptInputStream intercept = null;
-		if (pref.getBool(CACHE_GAMEPACK)) {
-			try (	InputStream fileInput = new FileInputStream(atlas.cacheJar);
-					RandomAccessFile idFile = new RandomAccessFile(atlas.cacheID, "rwd") ) {
-
-				if (Integer.parseInt(config.get(ClientConfig.Key.DOWNLOAD)) == idFile.readInt()) {
-					InputStream stream = wrapStream(
-							fileInput,
-							(int)atlas.cacheJar.length(),
-							null,
-							listener);
-					gamepack = ClientGamepack.fromStream(stream, null);
-				}
-			} catch (GeneralSecurityException | IOException | SecurityException e) {}
-		}
 
 		/*
 		 * If the local gamepack fails to load, is out of date, or is not set
@@ -194,37 +136,7 @@ public class Client {
 		return new Client(config, gamepack, intercept, applet);
 	}
 
-	/**
-	 * Prepares a gamepack InputStream by wrapping it in any InputStreams
-	 * necessary to decompress the gamepack and track loading progress.
-	 * <p>
-	 * The gamepack InputStream will be decompressed using a set of InputStreams
-	 * based on the encoding of the gamepack. These streams can be found in
-	 * {@link DecompressStream}'s <code>getInputStream</code> method.
-	 * <p>
-	 * Additionally, the provided {@link ProgressListener} will be updated
-	 * based on the progress tracked by a <code>ProgressInputStream</code>.
-	 * The progress will reflect how much of the gamepack has been downloaded,
-	 * as opposed to how much has been decompressed or verified.
-	 * 
-	 * @param stream InputStream to be wrapped
-	 * @param length Length of the given gamepack InputStream, in bytes
-	 * @param encoding Encoding of the given gamepack InputStream
-	 * @param listener ProgressListener to be updated about download progress
-	 * @return An InputStream that will output the decompressed gamepack
-	 * @throws IOException If an exception was thrown while creating a stream.
-	 * @see DecompressStream, ProgressListener
-	 */
-	private static InputStream wrapStream(InputStream stream, int length, String encoding, ProgressListener listener) throws IOException {
-		return DecompressStream.getInputStream(
-				new ProgressInputStream(stream) {
-					@Override
-					protected void update(int bytesRead) {
-						int percent = 100 * bytesRead / length;
-						listener.setProgress(percent, "Loading application - " + percent + "%");
-					}
-				}, encoding);
-	}
+	
 
 
 	/**
