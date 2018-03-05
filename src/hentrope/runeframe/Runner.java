@@ -5,14 +5,15 @@ import static hentrope.runeframe.Preferences.Key.*;
 import java.applet.Applet;
 import java.io.*;
 import java.security.GeneralSecurityException;
-import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
+
 import hentrope.runeframe.io.FileAtlas;
 import hentrope.runeframe.task.*;
-import hentrope.runeframe.ui.ProgressBar;
 import hentrope.runeframe.ui.RuneFrame;
 import hentrope.runeframe.util.ProgressListener;
 
@@ -31,13 +32,24 @@ public class Runner {
 	 * @throws Exception if there is an unhandled exception during execution
 	 */
 	public static void main(String[] arguments) throws Exception {
-		long start = System.nanoTime(); // Debug - output starting time
-		
+		SwingUtilities.invokeLater(new Runnable() {
+
+			@Override
+			public void run() {
+				// TODO Auto-generated method stub
+				
+			}});
+		long overallStart = System.nanoTime(); // Debug - output starting time
+		long start; // start = System.nanoTime();
+
+		start = System.nanoTime();
+
 		/*
 		 * Create a new cached thread pool to handle multi-threading the tasks
 		 * performed to load the client.
 		 */
 		ExecutorService exec = Executors.newCachedThreadPool();
+		ExecutorService swingExec = Executors.newSingleThreadExecutor();
 
 		/*
 		 * Submit a task that will create Arguments, Preferences, and FileAtlas
@@ -45,31 +57,33 @@ public class Runner {
 		 */
 		Future<LoadClientConfig.Results> loadClientConfig = exec.submit(
 				new LoadClientConfig(arguments) );
-		
+
 		/*
 		 * Create a ProgressBar instance so that other tasks can update the
 		 * progress bar without waiting for the GUI to be initialized.
 		 */
-		ProgressBar progressBar = new ProgressBar();
-		
+		ProgressListener progress = new ProgressListener();
+
 		/*
 		 * Submit a task that will initialize and display the client frame,
 		 * adding and displaying the previously created ProgressBar.
 		 */
-		Future<RuneFrame> createUIComponents = exec.submit(
-				new CreateUIComponents(loadClientConfig, progressBar) );
+		Future<RuneFrame> createUIComponents = swingExec.submit(
+				new CreateUIComponents(loadClientConfig, progress) );
 
 		/*
 		 * Since all remaining tasks will immediately depend on
 		 * loadClientConfig completing, wait for it to complete and store the
 		 * results in local variables for easier access.
 		 */
+
 		LoadClientConfig.Results clientConfigResults = loadClientConfig.get();
 		Preferences pref = clientConfigResults.pref;
 		FileAtlas atlas = clientConfigResults.atlas;
 		
+		System.out.println("Preferences:" + ((System.nanoTime() - start) / 1000000));
 		
-		
+		start = System.nanoTime();
 		/*
 		 * If the client is set to cache the gamepack, submit tasks that will
 		 * load both the gamepack and the cacheID from the disk.
@@ -80,8 +94,6 @@ public class Runner {
 			loadCacheGamepack = exec.submit(new LoadCacheGamepack(atlas.cacheJar));
 			loadCacheID = exec.submit(new LoadCacheID(atlas.cacheID));
 		}
-		
-		
 
 		/*
 		 * Attempt to load the game client 3 times, terminating the process if
@@ -96,14 +108,17 @@ public class Runner {
 		while (applet == null) {
 			try {
 				gamepack = null;
-				
-				progressBar.setProgress(0, "Loading config");
+
+				progress.setProgress(0, "Loading config");
 				JavConfig jav = new LoadJavConfig(pref.getInt(HOME_WORLD)).call();
 				downloadID = Integer.parseInt(jav.get(JavConfig.Key.DOWNLOAD));
 				
+				System.out.println("JavConfig:" + ((System.nanoTime() - start) / 1000000));
 				
 				
-				progressBar.setProgress(0, "Loading application");
+				start = System.nanoTime();
+				
+				progress.setProgress(0, "Loading application");
 				if (!triedCache && pref.getBool(CACHE_GAMEPACK)) try {
 					triedCache = true;
 					int cacheID = loadCacheID.get();
@@ -114,45 +129,48 @@ public class Runner {
 					System.err.println("Unable to load local cache.");
 					e.printStackTrace();
 				}
-				
-				
-				
+
 				if (gamepack == null)
-					gamepack = new LoadWebGamepack(jav, pref.getBool(CACHE_GAMEPACK), progressBar, atlas.certificateDir).call();
+					gamepack = new LoadWebGamepack(jav, pref.getBool(CACHE_GAMEPACK), progress, atlas.certificateDir).call();
 				
-				progressBar.setProgress(100, "Launching application");
-				applet = new CreateApplet(jav, gamepack.classMap).call();
+				progress.setProgress(100, "Launching application");
 				
-				System.out.println((System.nanoTime() - start) / 1000000);
+				start = System.nanoTime();
 				
+				applet = swingExec.submit(
+						new CreateApplet(jav, gamepack.classMap) ).get();
+				
+				System.out.println("Applet:" + ((System.nanoTime() - start) / 1000000));
 			} catch (IOException e) {
-				retry(progressBar, "Connection error.", 15);
+				retry(progress, "Connection error.", 15);
 			} catch (Exception e) {
 				counter--;
 				if (counter > 0) {
 					if (e instanceof SecurityException || e instanceof GeneralSecurityException)
-						retry(progressBar, "Invalid gamepack.", 10);
+						retry(progress, "Invalid gamepack.", 10);
 					else if (e instanceof ReflectiveOperationException)
-						retry(progressBar, "Classload error.", 10);
+						retry(progress, "Classload error.", 10);
 					else throw e;
 				} else throw e;
 			}
 		}
-		
-		
-		
+
+		start = System.nanoTime();
+
 		/*
 		 * Set the user.home property so that the game places its files in a
 		 * a different directory.
 		 */
 		System.setProperty("user.home", atlas.dataDir.toString());
-		
-		
-		new StartApplet(applet, createUIComponents.get()).call();
 
+		swingExec.submit(
+				new StartApplet(applet, createUIComponents.get()) ).get();
+		//new StartApplet(applet, createUIComponents.get()).call();
+		System.out.println("StartApplet:" + ((System.nanoTime() - start) / 1000000));
 
 		//System.out.println((System.nanoTime() - start) / 1000000); // Debug - output loading time
-
+		System.out.println("Overall: " + ((System.nanoTime() - overallStart) / 1000000));
+		
 
 		/*
 		 * Lower the current thread's priority and wait a set amount of time

@@ -6,8 +6,6 @@ import java.security.SecureClassLoader;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
-import javax.swing.SwingUtilities;
-
 import hentrope.runeframe.JavConfig;
 import hentrope.runeframe.Runner;
 import hentrope.runeframe.util.JSObjectClassLoader;
@@ -15,12 +13,12 @@ import hentrope.runeframe.util.JSObjectClassLoader;
 public class CreateApplet implements Callable<Applet> {
 	private final JavConfig config;
 	private final Map<String, byte[]> classMap;
-	
+
 	public CreateApplet(JavConfig config, Map<String, byte[]> classMap) {
 		this.config = config;
 		this.classMap = classMap;
 	}
-	
+
 	@Override
 	public Applet call() throws Exception {
 
@@ -32,8 +30,8 @@ public class CreateApplet implements Callable<Applet> {
 		 */
 		ClassLoader parent = JSObjectClassLoader.fromURL(
 				((URLClassLoader)Runner.class.getClassLoader()).findResource("netscape/javascript/JSObject.class"));
-		
-		
+
+
 
 		/*
 		 * Using this ClassLoader as the parent, a new ClassLoader can be
@@ -51,27 +49,12 @@ public class CreateApplet implements Callable<Applet> {
 				return defineClass(name, data, 0, data.length);
 			}
 		};
-		
-		
 
-				long start = System.nanoTime();
-				Applet applet;
-				try {
-					applet = (Applet) loader.loadClass(config.getInitialClass()).newInstance();
-					applet.setStub(config);
-					
-					System.out.println((System.nanoTime() - start) / 1000000);
+		Applet applet = (Applet) loader.loadClass(config.getInitialClass()).newInstance();
+		applet.setStub(config);
 
-					//if (true)
-						applet.setLayout(null);
-				} catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-
-		
-		//System.out.println((System.nanoTime() - start) / 1000000);
-
+		//if (true)
+		applet.setLayout(null);
 
 		// Listen for any new components being added to the Applet container.
 		// If a Canvas is added, enable "ignore repaint" to stop screen flickering.
@@ -88,6 +71,6 @@ public class CreateApplet implements Callable<Applet> {
 			public void componentRemoved(ContainerEvent e) {}
 		});*/
 
-		return null;//applet;
+		return applet;
 	}
 }

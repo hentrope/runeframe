@@ -11,8 +11,6 @@ import java.awt.geom.Rectangle2D;
 
 import javax.swing.Timer;
 
-import hentrope.runeframe.util.ProgressListener;
-
 /**
  * An AWT component that renders a progress bar identical to that which
  * OSRS uses.
@@ -22,22 +20,21 @@ import hentrope.runeframe.util.ProgressListener;
  * 
  * @author hentrope
  */
-public class ProgressBar extends Component implements ActionListener, ProgressListener {
+public class ProgressBar extends Component implements ActionListener {
 	private final static Dimension size = new Dimension(303, 33);
 	private final static Color color = new Color(140, 17, 17);
 	private final static Font font = new Font("Helvetica", 1, 13);
 	private final static int DELAY = 1000 / 30;
-
+	
 	private final Timer timer;
 	private volatile boolean dirty = false;
 	private volatile int progress = 0;
 	private volatile String message = "";
 
-
 	public ProgressBar() {
 		super();
 		setBackground(Color.BLACK);
-
+		
 		timer = new Timer(DELAY, this);
 		timer.setCoalesce(true);
 		timer.setRepeats(true);
@@ -53,7 +50,6 @@ public class ProgressBar extends Component implements ActionListener, ProgressLi
 			timer.stop();
 	}
 
-	@Override
 	public final void setProgress(int progress, String message) {
 		this.progress = progress;
 		this.message = message;
@@ -67,7 +63,7 @@ public class ProgressBar extends Component implements ActionListener, ProgressLi
 			repaint();
 		}
 	}
-
+	
 	@Override
 	public void paint(Graphics g) {
 		super.paint(g);

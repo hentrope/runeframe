@@ -2,6 +2,7 @@ package hentrope.runeframe.task;
 
 import static hentrope.runeframe.Preferences.Key.*;
 
+import java.awt.Component;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 
@@ -11,48 +12,52 @@ import javax.swing.UIManager;
 import hentrope.runeframe.screen.Screenshot;
 import hentrope.runeframe.ui.GraphicsAcceleration;
 import hentrope.runeframe.ui.InputManager;
-import hentrope.runeframe.ui.ProgressBar;
 import hentrope.runeframe.ui.RuneFrame;
+import hentrope.runeframe.util.ProgressListener;
 
 public class CreateUIComponents implements Callable<RuneFrame> {
 	private final Future<LoadClientConfig.Results> loadClientConfig;
-	private final ProgressBar progressBar;
+	private final ProgressListener progress;
 
-	public CreateUIComponents(Future<LoadClientConfig.Results> loadClientConfig, ProgressBar progressBar) {
+	public CreateUIComponents(Future<LoadClientConfig.Results> loadClientConfig, ProgressListener progress) {
 		this.loadClientConfig = loadClientConfig;
-		this.progressBar = progressBar;
+		this.progress = progress;
 	}
 
 	@Override
 	public RuneFrame call() throws Exception {
+		long start;
+		start = System.nanoTime();
 		/*
 		 * Create the UI components, initializing them on the AWT event dispatch thread.
 		 */
-		RuneFrame ui = new RuneFrame();
+		RuneFrame frame = new RuneFrame();
+		Component progressBar = progress.getComponent();
 
 		System.setProperty("swing.defaultlaf", UIManager.getSystemLookAndFeelClassName());
 		System.setProperty("sun.awt.noerasebackground", "true");
 		System.setProperty("sun.awt.erasebackgroundonresize", "false");
+		
+		System.out.println("UI Starting:" + ((System.nanoTime() - start) / 1000000));
 
-		LoadClientConfig.Results results = loadClientConfig.get();
-		
-		
-		
-		GraphicsAcceleration.set(results.pref.get(GRAPHICS_ACCELERATION));
+		LoadClientConfig.Results config = loadClientConfig.get();
+
+		GraphicsAcceleration.set(config.pref.get(GRAPHICS_ACCELERATION));
 
 		SwingUtilities.invokeLater(new Runnable() {
 			@Override
 			public void run() {
-				ui.init(results.pref, results.atlas.state);
-				ui.setComponent(progressBar);
-				ui.show();
+				System.out.println("UI Starting:" + ((System.nanoTime() - start) / 1000000));
+				frame.init(config.pref, config.atlas.state);
+				frame.setComponent(progressBar);
+				frame.show();
 				progressBar.setEnabled(true);
-
-				InputManager.setupKeyEventDispatcher( results.pref.getBool(FULLSCREEN_ENABLED) ? ui : null,
-						results.pref.getBool(SCREENSHOT_ENABLED) ? Screenshot.create(results.pref, results.atlas.screenDir, ui) : null);
 			}
 		});
 
-		return ui;
+		InputManager.setupKeyEventDispatcher( config.pref.getBool(FULLSCREEN_ENABLED) ? frame : null,
+				config.pref.getBool(SCREENSHOT_ENABLED) ? Screenshot.create(config.pref, config.atlas.screenDir, frame) : null);
+
+		return frame;
 	}
 }

@@ -18,12 +18,14 @@ public class StartApplet implements Callable<Void> {
 
 	@Override
 	public Void call() throws Exception {
+		long start = System.nanoTime();
 		/*
 		 * Add the applet to the frame on the AWT event dispatch thread.
 		 */
 		SwingUtilities.invokeAndWait(new Runnable() {
 			@Override
 			public void run() {
+				System.out.println("UI Finish:" + ((System.nanoTime() - start) / 1000000));
 				frame.setComponent(applet);
 				applet.revalidate();
 			}
