@@ -1,4 +1,4 @@
-package hentrope.runeframe.task;
+package hentrope.runeframe.task.game;
 
 import java.applet.Applet;
 import java.net.URLClassLoader;

@@ -26,7 +26,7 @@ import hentrope.runeframe.Preferences;
  * 
  * @author hentrope
  */
-public class RuneFrame implements ComponentListener, WindowStateListener {
+public class RuneFrame extends Frame implements ComponentListener, WindowStateListener {
 	public static final Dimension MINIMUM_CLIENT_SIZE = new Dimension(765, 503);
 	public static final int INBOUNDS_X = 32, INBOUNDS_Y = 16;
 
@@ -34,8 +34,28 @@ public class RuneFrame implements ComponentListener, WindowStateListener {
 	private int state = Frame.NORMAL;
 	private boolean fullscreen = false;
 
-	private Frame frame;
 	private volatile Component comp;
+
+	public RuneFrame() {
+		super();
+		setLayout(new BorderLayout());
+		setTitle("Old School RuneScape - RuneFrame");
+		setBackground(Color.BLACK);
+		setResizable(true);
+		setUndecorated(false);
+
+		/*
+		 * Add listeners that will handle state change and closing events.
+		 */
+		addComponentListener(this);
+		addWindowStateListener(this);
+		addWindowListener(new WindowAdapter() {
+			@Override
+			public void windowClosing(WindowEvent we) {
+				close();
+			}
+		});
+	}
 
 	/**
 	 * Initializes an instance of RuneFrame, which is used to manage the
@@ -50,17 +70,6 @@ public class RuneFrame implements ComponentListener, WindowStateListener {
 	 * @param file the state file to be used when loading/saving the window's state
 	 */
 	public void init(Preferences pref, File file) {
-		/*
-		 * Create a Frame, and set some basic properties.
-		 */
-		frame = new Frame();
-		frame.setLayout(new BorderLayout());
-		frame.setTitle("Old School RuneScape - RuneFrame");
-		frame.setBackground(Color.BLACK);
-		frame.setResizable(true);
-		frame.setUndecorated(false);
-
-
 		if (pref.getBool(Preferences.Key.PRESERVE_WINDOW_STATE)) {
 			/*
 			 * Load the previous window state from the runeframe.state file.
@@ -72,10 +81,10 @@ public class RuneFrame implements ComponentListener, WindowStateListener {
 				bounds.height = raFile.readInt();
 				state = raFile.readInt();
 
-				frame.setBounds(bounds);
+				setBounds(bounds);
 			} catch (IOException e) {
-				frame.setLocationRelativeTo(null);
-				frame.getBounds(bounds);
+				setLocationRelativeTo(null);
+				getBounds(bounds);
 			}
 
 			/*
@@ -99,23 +108,11 @@ public class RuneFrame implements ComponentListener, WindowStateListener {
 			/*
 			 * If state is not saved, simply put the window in the center of the screen.
 			 */
-			frame.setLocationRelativeTo(null);
-			frame.getBounds(bounds);
+			setLocationRelativeTo(null);
+			getBounds(bounds);
 			if (file.exists() && file.length() < 1024)
 				file.delete();
 		}
-
-		/*
-		 * Add listeners that will handle state change and closing events.
-		 */
-		frame.addComponentListener(this);
-		frame.addWindowStateListener(this);
-		frame.addWindowListener(new WindowAdapter() {
-			@Override
-			public void windowClosing(WindowEvent we) {
-				close();
-			}
-		});
 	}
 
 	/**
@@ -126,9 +123,9 @@ public class RuneFrame implements ComponentListener, WindowStateListener {
 	 */
 	public void setComponent(Component comp) {
 		if (this.comp != null)
-			frame.remove(this.comp);
+			remove(this.comp);
 		this.comp = comp;
-		frame.add(comp);
+		add(comp);
 	}
 
 	/**
@@ -150,52 +147,52 @@ public class RuneFrame implements ComponentListener, WindowStateListener {
 	 * It was rewritten to allow it to get the usable bounds of a specific
 	 * GraphicsConfiguration, instead of a GraphicsDevice. 
 	 */
-	public void show() {
-		/*
-		 * Sets the window to be visible, which is needed to calculate size and insets.
-		 */
-		frame.setVisible(true);
+	@Override
+	public void setVisible(boolean b) {
+		super.setVisible(b);
 
-		/*
-		 * Set the window's minimum size to fit the dimensions of the game.
-		 */
-		Insets insets = frame.getInsets();
-		frame.setMinimumSize(new Dimension(
-				MINIMUM_CLIENT_SIZE.width + insets.left + insets.right,
-				MINIMUM_CLIENT_SIZE.height + insets.top + insets.bottom));
+		if (b) {
+			/*
+			 * Set the window's minimum size to fit the dimensions of the game.
+			 */
+			Insets insets = getInsets();
+			setMinimumSize(new Dimension(
+					MINIMUM_CLIENT_SIZE.width + insets.left + insets.right,
+					MINIMUM_CLIENT_SIZE.height + insets.top + insets.bottom));
 
-		/*
-		 * Get the usable bounds of the window's current GraphicsConfiguration.
-		 */
-		GraphicsConfiguration config = frame.getGraphicsConfiguration();
-		Rectangle usableBounds = config.getBounds();
-		insets = Toolkit.getDefaultToolkit().getScreenInsets(config);
-		usableBounds.x += insets.left;
-		usableBounds.y += insets.top;
-		usableBounds.width -= (insets.left + insets.right);
-		usableBounds.height -= (insets.top + insets.bottom);
+			/*
+			 * Get the usable bounds of the window's current GraphicsConfiguration.
+			 */
+			GraphicsConfiguration config = getGraphicsConfiguration();
+			Rectangle usableBounds = config.getBounds();
+			insets = Toolkit.getDefaultToolkit().getScreenInsets(config);
+			usableBounds.x += insets.left;
+			usableBounds.y += insets.top;
+			usableBounds.width -= (insets.left + insets.right);
+			usableBounds.height -= (insets.top + insets.bottom);
 
-		/*
-		 * Get the height of the title bar, which needs to be visible upon startup.
-		 */
-		Rectangle windowBounds = frame.getBounds();
-		windowBounds.height = frame.getInsets().top;
+			/*
+			 * Get the height of the title bar, which needs to be visible upon startup.
+			 */
+			Rectangle windowBounds = getBounds();
+			windowBounds.height = getInsets().top;
 
-		/*
-		 * Update the window's bounds to ensure the title bar is in view.
-		 */
-		windowBounds.x = Math.max(windowBounds.x, usableBounds.x - windowBounds.width + INBOUNDS_X);
-		windowBounds.x = Math.min(windowBounds.x, usableBounds.x + usableBounds.width - INBOUNDS_X);
+			/*
+			 * Update the window's bounds to ensure the title bar is in view.
+			 */
+			windowBounds.x = Math.max(windowBounds.x, usableBounds.x - windowBounds.width + INBOUNDS_X);
+			windowBounds.x = Math.min(windowBounds.x, usableBounds.x + usableBounds.width - INBOUNDS_X);
 
-		windowBounds.y = Math.max(windowBounds.y, usableBounds.y - windowBounds.height + INBOUNDS_Y);
-		windowBounds.y = Math.min(windowBounds.y, usableBounds.y + usableBounds.height - INBOUNDS_Y);
+			windowBounds.y = Math.max(windowBounds.y, usableBounds.y - windowBounds.height + INBOUNDS_Y);
+			windowBounds.y = Math.min(windowBounds.y, usableBounds.y + usableBounds.height - INBOUNDS_Y);
 
-		/*
-		 * Move the window to this updated bounds, and change its state to reflect
-		 * whether it is maximized or not.
-		 */
-		frame.setLocation(windowBounds.x, windowBounds.y);
-		frame.setExtendedState(state);
+			/*
+			 * Move the window to this updated bounds, and change its state to reflect
+			 * whether it is maximized or not.
+			 */
+			setLocation(windowBounds.x, windowBounds.y);
+			setExtendedState(state);
+		}
 	}
 
 	/**
@@ -204,25 +201,25 @@ public class RuneFrame implements ComponentListener, WindowStateListener {
 	 * method will do nothing.
 	 */
 	public void toggleFullscreen() {
-		GraphicsDevice device = frame.getGraphicsConfiguration().getDevice();
+		GraphicsDevice device = getGraphicsConfiguration().getDevice();
 
 		if (!device.isFullScreenSupported())
 			return;
 
 		boolean newFullscreen = !fullscreen;
 
-		frame.dispose();
-		frame.setResizable(!newFullscreen);
-		frame.setUndecorated(newFullscreen);
+		dispose();
+		setResizable(!newFullscreen);
+		setUndecorated(newFullscreen);
 
-		device.setFullScreenWindow(newFullscreen ? frame : null);
+		device.setFullScreenWindow(newFullscreen ? this : null);
 
-		frame.setVisible(true);
+		setVisible(true);
 		fullscreen = !fullscreen;
 
 		if (!newFullscreen) {
-			frame.setBounds(bounds);
-			frame.setExtendedState(state);
+			setBounds(bounds);
+			setExtendedState(state);
 		}
 	}
 
@@ -231,7 +228,7 @@ public class RuneFrame implements ComponentListener, WindowStateListener {
 	 * confirm, the application will exit.
 	 */
 	public void close() {
-		if (ExitConfirmDialog.showConfirmDialog(frame,
+		if (ExitConfirmDialog.showConfirmDialog(this,
 				"Are you sure you want to quit?",
 				"Exit Confirmation",
 				null) == JOptionPane.YES_OPTION)

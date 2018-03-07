@@ -1,4 +1,4 @@
-package hentrope.runeframe.task;
+package hentrope.runeframe.task.cleanup;
 
 import java.util.concurrent.Callable;
 

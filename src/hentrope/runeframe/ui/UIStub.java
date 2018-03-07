@@ -1,18 +1,25 @@
-package hentrope.runeframe.util;
+package hentrope.runeframe.ui;
 
 import java.awt.Component;
-
-import hentrope.runeframe.ui.ProgressBar;
+import java.awt.Frame;
 
 /**
  * Interface for objects that will listen for progress updates.
  * 
  * @author hentrope
  */
-public class ProgressListener {
+public class UIStub {
+	private volatile RuneFrame frame;
 	private volatile ProgressBar bar;
 	private volatile int progress = 0;
 	private volatile String message = "";
+	
+	public Frame getFrame() {
+		if (frame == null) {
+			frame = new RuneFrame();
+		}
+		return frame;
+	}
 
 	public Component getComponent() {
 		if (bar == null) {
@@ -34,5 +41,12 @@ public class ProgressListener {
 			this.message = message;
 		} else
 			bar.setProgress(progress, message);
+	}
+	
+	public void setComponent(Component c) {
+		if (frame == null)
+			throw new IllegalStateException("Frame not initialized.");
+		else
+			frame.setComponent(c);
 	}
 }

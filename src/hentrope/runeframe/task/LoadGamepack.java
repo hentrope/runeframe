@@ -12,8 +12,8 @@ import java.util.jar.JarInputStream;
 
 import hentrope.runeframe.io.DecompressStream;
 import hentrope.runeframe.io.ProgressInputStream;
+import hentrope.runeframe.ui.UIStub;
 import hentrope.runeframe.util.CertificateVerifier;
-import hentrope.runeframe.util.ProgressListener;
 
 public interface LoadGamepack extends Callable<LoadGamepack.Results> {
 	public static final int BUFFER_SIZE = 4096, BYTESTREAM_SIZE = 65536;
@@ -26,7 +26,7 @@ public interface LoadGamepack extends Callable<LoadGamepack.Results> {
 	 * based on the encoding of the gamepack. These streams can be found in
 	 * {@link DecompressStream}'s <code>getInputStream</code> method.
 	 * <p>
-	 * Additionally, the provided {@link ProgressListener} will be updated
+	 * Additionally, the provided {@link UIStub} will be updated
 	 * based on the progress tracked by a <code>ProgressInputStream</code>.
 	 * The progress will reflect how much of the gamepack has been downloaded,
 	 * as opposed to how much has been decompressed or verified.
@@ -39,7 +39,7 @@ public interface LoadGamepack extends Callable<LoadGamepack.Results> {
 	 * @throws IOException If an exception was thrown while creating a stream.
 	 * @see DecompressStream, ProgressListener
 	 */
-	public static InputStream wrapStream(InputStream stream, int length, String encoding, ProgressListener listener) throws IOException {
+	public static InputStream wrapStream(InputStream stream, int length, String encoding, UIStub listener) throws IOException {
 		if (listener == null)
 			return DecompressStream.getInputStream(stream, encoding);
 		
@@ -122,7 +122,7 @@ public interface LoadGamepack extends Callable<LoadGamepack.Results> {
 		public final Map<String, byte[]> classMap;
 		public final byte[] raw;
 
-		protected Results(Map<String, byte[]> classMap, byte[] raw) {
+		public Results(Map<String, byte[]> classMap, byte[] raw) {
 			this.classMap = classMap;
 			this.raw = raw;
 		}

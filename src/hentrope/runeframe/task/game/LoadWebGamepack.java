@@ -1,4 +1,4 @@
-package hentrope.runeframe.task;
+package hentrope.runeframe.task.game;
 
 import java.io.File;
 import java.io.InputStream;
@@ -7,16 +7,17 @@ import java.net.URLConnection;
 
 import hentrope.runeframe.JavConfig;
 import hentrope.runeframe.io.InterceptInputStream;
+import hentrope.runeframe.task.LoadGamepack;
+import hentrope.runeframe.ui.UIStub;
 import hentrope.runeframe.util.CertificateVerifier;
-import hentrope.runeframe.util.ProgressListener;
 
 public class LoadWebGamepack implements LoadGamepack {
 	private final JavConfig config;
 	private final boolean getRaw;
-	private final ProgressListener listener;
+	private final UIStub listener;
 	private final File certDir;
 
-	public LoadWebGamepack(JavConfig config, boolean getRaw, ProgressListener listener, File certDir) {
+	public LoadWebGamepack(JavConfig config, boolean getRaw, UIStub listener, File certDir) {
 		this.config = config;
 		this.getRaw = getRaw;
 		this.listener = listener;

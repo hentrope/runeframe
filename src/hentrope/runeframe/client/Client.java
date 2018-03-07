@@ -13,6 +13,7 @@ import hentrope.runeframe.io.DecompressStream;
 import hentrope.runeframe.io.FileAtlas;
 import hentrope.runeframe.io.InterceptInputStream;
 import hentrope.runeframe.io.ProgressInputStream;
+import hentrope.runeframe.ui.UIStub;
 import hentrope.runeframe.util.*;
 
 /**
@@ -20,7 +21,7 @@ import hentrope.runeframe.util.*;
  * configuration and gamepack, and creating the ClassLoader.
  * 
  * @author hentrope
- * @see Client#loadAll(Preferences, FileAtlas, ProgressListener)
+ * @see Client#loadAll(Preferences, FileAtlas, UIStub)
  */
 public class Client {
 	/**
@@ -61,7 +62,7 @@ public class Client {
 	 * @see ClientClassLoader
 	 * @see JSObjectClassLoader
 	 */
-	public static Client loadAll(Preferences pref, FileAtlas atlas, ProgressListener listener)
+	public static Client loadAll(Preferences pref, FileAtlas atlas, UIStub listener)
 			throws IOException, GeneralSecurityException, ReflectiveOperationException, SecurityException {
 		
 		listener.setProgress(0, "Loading config");

@@ -1,4 +1,4 @@
-package hentrope.runeframe.task;
+package hentrope.runeframe.task.cleanup;
 
 import java.io.File;
 import java.io.FileOutputStream;

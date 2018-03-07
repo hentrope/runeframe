@@ -1,21 +1,21 @@
 package hentrope.runeframe;
 
+import static hentrope.runeframe.Arguments.Key.DEBUG;
 import static hentrope.runeframe.Preferences.Key.*;
 
 import java.applet.Applet;
 import java.io.*;
-import java.security.GeneralSecurityException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import javax.swing.SwingUtilities;
-import javax.swing.UIManager;
 
 import hentrope.runeframe.io.FileAtlas;
 import hentrope.runeframe.task.*;
-import hentrope.runeframe.ui.RuneFrame;
-import hentrope.runeframe.util.ProgressListener;
+import hentrope.runeframe.task.cleanup.SaveDefaultPreferences;
+import hentrope.runeframe.task.cleanup.SaveGamepackCache;
+import hentrope.runeframe.ui.UIStub;
 
 /**
  * Runner class for the RuneFrame client, which contains the client's main method.
@@ -24,6 +24,8 @@ import hentrope.runeframe.util.ProgressListener;
  */
 public class Runner {
 	public final static int CLEANUP_DELAY = 1000;
+	private static long prev = System.nanoTime();
+	private static long total = 0;
 
 	/**
 	 * Entry method for the RuneFrame client. See inline comments for details.
@@ -32,58 +34,53 @@ public class Runner {
 	 * @throws Exception if there is an unhandled exception during execution
 	 */
 	public static void main(String[] arguments) throws Exception {
-		SwingUtilities.invokeLater(new Runnable() {
-
-			@Override
-			public void run() {
-				// TODO Auto-generated method stub
-				
-			}});
-		long overallStart = System.nanoTime(); // Debug - output starting time
-		long start; // start = System.nanoTime();
-
-		start = System.nanoTime();
+		//SwingUtilities.invokeAndWait(new Runnable() { public void run() {} });
+		//time("main function start");
 
 		/*
 		 * Create a new cached thread pool to handle multi-threading the tasks
 		 * performed to load the client.
 		 */
 		ExecutorService exec = Executors.newCachedThreadPool();
-		ExecutorService swingExec = Executors.newSingleThreadExecutor();
 
 		/*
-		 * Submit a task that will create Arguments, Preferences, and FileAtlas
-		 * instances based on the arguments submitted to the main method.
+		 * Store all of the command line arguments in an Arguments instance.
 		 */
-		Future<LoadClientConfig.Results> loadClientConfig = exec.submit(
-				new LoadClientConfig(arguments) );
+		Arguments args = new Arguments(arguments);
+		
+		/*
+		 * Based on the Arguments, load in all preferences from the preferences file.
+		 */
+		Preferences pref = new Preferences(args);
+		
+		/*
+		 * Based on both arguments and preferences, determine the location of all files.
+		 */
+		FileAtlas atlas = new FileAtlas(args, pref);
+		atlas.userDir.mkdirs();
+		atlas.dataDir.mkdirs();
+		atlas.certificateDir.mkdir();
+		
+		/*System.out.println("user = " + atlas.userDir); // Debug - print all directory paths
+		System.out.println("system = " + atlas.systemDir);
+		System.out.println("screen = " + atlas.screenDir);*/
+		
+		/*
+		 * Unless the DEBUG flag is set, output any errors to an external file.
+		 */
+		if (!args.getBool(DEBUG))
+			try {
+				System.setErr(new PrintStream(new FileOutputStream(atlas.errors, true)));
+			} catch (FileNotFoundException e) {
+				System.err.println("Unable to open error output file.");
+			}
 
 		/*
 		 * Create a ProgressBar instance so that other tasks can update the
 		 * progress bar without waiting for the GUI to be initialized.
 		 */
-		ProgressListener progress = new ProgressListener();
+		UIStub progress = new UIStub();
 
-		/*
-		 * Submit a task that will initialize and display the client frame,
-		 * adding and displaying the previously created ProgressBar.
-		 */
-		Future<RuneFrame> createUIComponents = swingExec.submit(
-				new CreateUIComponents(loadClientConfig, progress) );
-
-		/*
-		 * Since all remaining tasks will immediately depend on
-		 * loadClientConfig completing, wait for it to complete and store the
-		 * results in local variables for easier access.
-		 */
-
-		LoadClientConfig.Results clientConfigResults = loadClientConfig.get();
-		Preferences pref = clientConfigResults.pref;
-		FileAtlas atlas = clientConfigResults.atlas;
-		
-		System.out.println("Preferences:" + ((System.nanoTime() - start) / 1000000));
-		
-		start = System.nanoTime();
 		/*
 		 * If the client is set to cache the gamepack, submit tasks that will
 		 * load both the gamepack and the cacheID from the disk.
@@ -95,82 +92,35 @@ public class Runner {
 			loadCacheID = exec.submit(new LoadCacheID(atlas.cacheID));
 		}
 
+		Future<LoadGame.Results> loadGame = exec.submit(
+				new LoadGame(pref, atlas, progress, loadCacheID, loadCacheGamepack));
+
 		/*
-		 * Attempt to load the game client 3 times, terminating the process if
-		 * there are more than 3 non-IO exceptions thrown.
+		 * Submit a task that will initialize and display the client frame,
+		 * adding and displaying the previously created ProgressBar.
 		 */
-		int counter = 3;
+		//time("Beginning UI thread");
+		new DisplayUI(pref, atlas, progress, loadGame).call();
+		//time("Finished UI thread");
 		
-		int downloadID = -1;
-		boolean triedCache = false;
-		LoadGamepack.Results gamepack = null;
-		Applet applet = null;
-		while (applet == null) {
-			try {
-				gamepack = null;
 
-				progress.setProgress(0, "Loading config");
-				JavConfig jav = new LoadJavConfig(pref.getInt(HOME_WORLD)).call();
-				downloadID = Integer.parseInt(jav.get(JavConfig.Key.DOWNLOAD));
-				
-				System.out.println("JavConfig:" + ((System.nanoTime() - start) / 1000000));
-				
-				
-				start = System.nanoTime();
-				
-				progress.setProgress(0, "Loading application");
-				if (!triedCache && pref.getBool(CACHE_GAMEPACK)) try {
-					triedCache = true;
-					int cacheID = loadCacheID.get();
-					
-					if (cacheID == downloadID)
-						gamepack = loadCacheGamepack.get();
-				} catch (Exception e) {
-					System.err.println("Unable to load local cache.");
-					e.printStackTrace();
-				}
-
-				if (gamepack == null)
-					gamepack = new LoadWebGamepack(jav, pref.getBool(CACHE_GAMEPACK), progress, atlas.certificateDir).call();
-				
-				progress.setProgress(100, "Launching application");
-				
-				start = System.nanoTime();
-				
-				applet = swingExec.submit(
-						new CreateApplet(jav, gamepack.classMap) ).get();
-				
-				System.out.println("Applet:" + ((System.nanoTime() - start) / 1000000));
-			} catch (IOException e) {
-				retry(progress, "Connection error.", 15);
-			} catch (Exception e) {
-				counter--;
-				if (counter > 0) {
-					if (e instanceof SecurityException || e instanceof GeneralSecurityException)
-						retry(progress, "Invalid gamepack.", 10);
-					else if (e instanceof ReflectiveOperationException)
-						retry(progress, "Classload error.", 10);
-					else throw e;
-				} else throw e;
-			}
-		}
-
-		start = System.nanoTime();
-
+		LoadGame.Results game = loadGame.get();
+		Applet applet = game.applet;
+		
 		/*
 		 * Set the user.home property so that the game places its files in a
 		 * a different directory.
 		 */
 		System.setProperty("user.home", atlas.dataDir.toString());
-
-		swingExec.submit(
-				new StartApplet(applet, createUIComponents.get()) ).get();
-		//new StartApplet(applet, createUIComponents.get()).call();
-		System.out.println("StartApplet:" + ((System.nanoTime() - start) / 1000000));
-
-		//System.out.println((System.nanoTime() - start) / 1000000); // Debug - output loading time
-		System.out.println("Overall: " + ((System.nanoTime() - overallStart) / 1000000));
 		
+		/*
+		 * Only after the applet is added to the frame may it be initialized and started.
+		 */
+		applet.init();
+		applet.start();
+		
+		time("Applet started");
+		totalTime("Total");
 
 		/*
 		 * Lower the current thread's priority and wait a set amount of time
@@ -201,37 +151,24 @@ public class Runner {
 		 * cache it, save the gamepack to disk using bytes from the intercept
 		 * stream.
 		 */
-		if (gamepack.raw != null) try {
+		/*if (gamepack.raw != null) try {
 			new SaveGamepackCache(atlas.cacheID, atlas.cacheJar, gamepack.raw, downloadID).call();
 		} catch (Exception e) {
 			System.err.println("Unable to save gamepack cache to disk.");
 			e.printStackTrace();
-		}
+		}*/
 
 		exec.shutdown();
 	}
 
-	/**
-	 * Causes the current thread to sleep for a given number of seconds, updating
-	 * the given {@link ProgressListener} once every second.
-	 * 
-	 * @param listener ProgressListener to be notified of the time remaining
-	 * @param message message to be displayed alongside the remaining time
-	 * @param seconds how many seconds the thread should wait before continuing
-	 */
-	private static void retry(ProgressListener listener, String message, int seconds) {
-		final long startTime = System.currentTimeMillis();
-
-		for (int i = 0; i < seconds; i++) {
-			listener.setProgress(0, message + " Retrying in " + (seconds-i));
-
-			long sleepTime = startTime + (i+1) * 1000 - System.currentTimeMillis();
-			if (sleepTime > 0)
-				try {
-					Thread.sleep(sleepTime);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-		}
+	public synchronized static void time(String message) {
+		long dif = System.nanoTime() - prev;
+		System.out.println(message + ": " + (dif / 1000000));
+		total += dif;
+		prev = System.nanoTime();
+	}
+	
+	public synchronized static void totalTime(String message) {
+		System.out.println(message + ": " + (total / 1000000));
 	}
 }

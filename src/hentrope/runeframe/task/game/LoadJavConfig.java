@@ -1,6 +1,7 @@
-package hentrope.runeframe.task;
+package hentrope.runeframe.task.game;
 
 import java.io.BufferedReader;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
@@ -28,6 +29,7 @@ public class LoadJavConfig implements Callable<JavConfig> {
 		} catch (IOException | NumberFormatException e) {}
 
 		return fromURL(new URL(URL_PREFIX + URL_SUFFIX));
+		
 	}
 
 	/**
@@ -38,9 +40,12 @@ public class LoadJavConfig implements Callable<JavConfig> {
 	 * @throws IOException if there was an exception getting the config
 	 */
 	public static JavConfig fromURL(URL url) throws IOException {
-		final URLConnection connection = url.openConnection();
+		
+		//final URLConnection connection = url.openConnection();
 		final BufferedReader reader = new BufferedReader( new InputStreamReader(
-				connection.getInputStream() ) );
+				//connection.getInputStream() ) );
+				//new FileInputStream("jav_config.ws") ) );
+				url.openStream() ) );
 		final HashMap<String, String> map = new HashMap<String, String>();
 
 		try {
