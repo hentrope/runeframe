@@ -1,5 +1,7 @@
 # RuneFrame
-RuneFrame is a minimalist client for Old School RuneScape written in Java. 
+RuneFrame is a minimalist client for Old School RuneScape written in Java 8.
+
+**Due to [policy changes by Jagex](https://secure.runescape.com/m=news/third-party-clients-update?oldschool=1), this client is no longer legal to use with RuneScape, and you will risk an account ban by using it. This remains here for archival purposes only.**
 
 ## Features
 RuneFrame forgoes having an extensive number of features to focus on doing one thing well: loading the game.
@@ -21,7 +23,7 @@ Currently, only an executable JAR is available for download, although you are fr
 
 [Link To Latest Release](https://github.com/hentrope/runeframe/releases)
 
-The legality of the client has not been stated nor confirmed by Jagex, so use at your own risk.
+~~The legality of the client has not been stated nor confirmed by Jagex, so use at your own risk.~~
 
 ## Arguments
 Three different command line arguments can be provided to the client during startup, which change some settings which cannot be offered in the preferences file. All arguments begin with "--", and contain no spaces between each key-value pair. For example, "PORTABLE=false PATH=C:/" will put the client into non-portable mode with all the files stored directly within the C: drive.
